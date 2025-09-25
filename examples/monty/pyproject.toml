@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "monty"
+version = "0.1.0"
+description = "Kubernetes utility with Active Directory integration for financial institutions"
+authors = ["RBC Workshop <workshop@rbc.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "monty" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+firestone-lib = "^0.2.0"
+flask = "^2.3.0"
+flask-cors = "^4.0.0"
+kubernetes = "^27.2.0"
+ldap3 = "^2.9.1"
+pyjwt = "^2.8.0"
+cryptography = "^41.0.0"
+pyyaml = "^6.0"
+click = "^8.1.0"
+tabulate = "^0.9.0"
+python-dateutil = "^2.8.2"
+requests = "^2.31.0"
+marshmallow = "^3.20.0"
+flask-jwt-extended = "^4.5.0"
+python-dotenv = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+black = "^23.7.0"
+flake8 = "^6.0.0"
+mypy = "^1.5.0"
+pre-commit = "^3.3.0"
+
+[tool.poetry.scripts]
+monty = "monty.cli.main:main"
+monty-server = "monty.api.main:run_server"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
