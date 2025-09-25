@@ -1,0 +1,149 @@
+kind: namespace
+apiVersion: v1
+metadata:
+  description: Kubernetes namespace resource for monty utility with Active Directory RBAC
+versionInPath: false
+default_query_params:
+  - name: limit
+    description: Limit the number of namespaces returned
+    in: query
+    schema:
+      type: integer
+      default: 50
+  - name: offset
+    description: Offset for pagination
+    in: query
+    schema:
+      type: integer
+      default: 0
+  - name: label_selector
+    description: Filter namespaces by labels (e.g., environment=prod)
+    in: query
+    schema:
+      type: string
+  - name: cluster
+    description: Target Kubernetes cluster name
+    in: query
+    schema:
+      type: string
+    required: true
+
+security:
+  scheme:
+    ad_bearer_auth:
+      scheme: bearer
+      type: http
+      bearerFormat: JWT
+      description: JWT token obtained through Active Directory authentication
+  resource:
+    - get
+    - post
+  instance:
+    - get
+    - put
+    - delete
+
+methods:
+  resource:
+    - get    # List namespaces
+    - post   # Create namespace
+  instance:
+    - get    # Get specific namespace
+    - put    # Update namespace
+    - delete # Delete namespace
+
+descriptions:
+  resource:
+    get: List all Kubernetes namespaces accessible to the authenticated user based on AD groups
+    post: Create a new Kubernetes namespace with appropriate RBAC bindings
+  instance:
+    get: Get detailed information about a specific Kubernetes namespace
+    put: Update a Kubernetes namespace (labels, annotations, resource quotas)
+    delete: Delete a Kubernetes namespace (requires elevated permissions)
+
+schema:
+  type: array
+  key:
+    name: namespace_name
+    description: The name of the Kubernetes namespace
+    schema:
+      type: string
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+  query_params:
+    - name: cluster
+      description: Target Kubernetes cluster name
+      required: true
+      schema:
+        type: string
+      methods:
+        - get
+        - post
+        - put
+        - delete
+  items:
+    type: object
+    properties:
+      namespace_name:
+        expose: false
+        description: The name of the namespace
+        type: string
+        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+      cluster_name:
+        description: The Kubernetes cluster this namespace belongs to
+        type: string
+      labels:
+        description: Labels applied to the namespace
+        type: object
+        additionalProperties:
+          type: string
+      annotations:
+        description: Annotations applied to the namespace
+        type: object
+        additionalProperties:
+          type: string
+      status:
+        description: Current status of the namespace
+        type: string
+        enum:
+          - Active
+          - Terminating
+        readOnly: true
+      resource_quota:
+        description: Resource quotas configured for the namespace
+        type: object
+        properties:
+          cpu_limit:
+            type: string
+            description: CPU limit (e.g., "2000m")
+          memory_limit:
+            type: string
+            description: Memory limit (e.g., "4Gi")
+          storage_limit:
+            type: string
+            description: Storage limit (e.g., "10Gi")
+          pod_limit:
+            type: integer
+            description: Maximum number of pods
+      network_policies:
+        description: Network policies applied to the namespace
+        type: array
+        items:
+          type: string
+      created_at:
+        description: Creation timestamp
+        type: string
+        format: date-time
+        readOnly: true
+      created_by:
+        description: User who created the namespace (from AD)
+        type: string
+        readOnly: true
+      ad_groups:
+        description: Active Directory groups with access to this namespace
+        type: array
+        items:
+          type: string
+        readOnly: true
+    required:
+      - namespace_name
+      - cluster_name
