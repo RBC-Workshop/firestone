@@ -1,0 +1,56 @@
+
+active_directory:
+  server: "ldap://ad-server.company.com"
+  domain: "COMPANY"
+  base_dn: "DC=company,DC=com"
+  user_search_base: "OU=Users,DC=company,DC=com"
+  group_search_base: "OU=Groups,DC=company,DC=com"
+  use_ssl: false
+  ca_cert_path: null
+  timeout: 30
+  admin_username: "monty-service"
+  admin_password: "service-password"  # Use environment variable instead
+
+jwt:
+  secret_key: ""  # Will be auto-generated if not provided
+  expiry_hours: 8
+  algorithm: "HS256"
+  issuer: "monty-k8s-utility"
+
+api:
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+
+audit:
+  enabled: true
+  log_file: "/var/log/monty/audit.log"
+  syslog_server: "syslog.company.com:514"
+
+clusters:
+  - name: "production"
+    endpoint: "https://prod-k8s.company.com:6443"
+    ca_cert_path: "/etc/monty/certs/prod-ca.crt"
+    service_account_token_path: "/etc/monty/tokens/prod-token"
+    kubeconfig_path: null
+    verify_ssl: true
+    default_namespace: "default"
+  
+  - name: "development"
+    endpoint: "https://dev-k8s.company.com:6443"
+    ca_cert_path: "/etc/monty/certs/dev-ca.crt"
+    service_account_token_path: "/etc/monty/tokens/dev-token"
+    kubeconfig_path: null
+    verify_ssl: true
+    default_namespace: "default"
+  
+  - name: "staging"
+    endpoint: "https://staging-k8s.company.com:6443"
+    ca_cert_path: "/etc/monty/certs/staging-ca.crt"
+    kubeconfig_path: "/etc/monty/kubeconfig/staging.yaml"
+    service_account_token_path: null
+    verify_ssl: true
+    default_namespace: "default"
+
+cli:
+  default_output_format: "table"

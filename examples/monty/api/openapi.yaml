@@ -1,0 +1,374 @@
+openapi: "3.0.0"
+info:
+  title: Monty Kubernetes API
+  description: Kubernetes namespace management with Active Directory authentication
+  version: "1.0"
+security:
+  - ad_bearer_auth: []
+components:
+  securitySchemes:
+    ad_bearer_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained through Active Directory authentication
+  schemas:
+    Namespace:
+      type: object
+      properties:
+        namespace_name:
+          type: string
+          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          description: The name of the namespace
+        cluster_name:
+          type: string
+          description: The Kubernetes cluster this namespace belongs to
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Labels applied to the namespace
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+          description: Annotations applied to the namespace
+        status:
+          type: string
+          enum:
+            - Active
+            - Terminating
+          readOnly: true
+          description: Current status of the namespace
+        resource_quota:
+          type: object
+          properties:
+            cpu_limit:
+              type: string
+              description: CPU limit (e.g., "2000m")
+            memory_limit:
+              type: string
+              description: Memory limit (e.g., "4Gi")
+            storage_limit:
+              type: string
+              description: Storage limit (e.g., "10Gi")
+            pod_limit:
+              type: integer
+              description: Maximum number of pods
+          description: Resource quotas configured for the namespace
+        network_policies:
+          type: array
+          items:
+            type: string
+          description: Network policies applied to the namespace
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Creation timestamp
+        created_by:
+          type: string
+          readOnly: true
+          description: User who created the namespace (from AD)
+        ad_groups:
+          type: array
+          items:
+            type: string
+          readOnly: true
+          description: Active Directory groups with access to this namespace
+      required:
+        - namespace_name
+        - cluster_name
+    CreateNamespace:
+      type: object
+      properties:
+        namespace_name:
+          type: string
+          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          description: The name of the namespace
+        cluster_name:
+          type: string
+          description: The Kubernetes cluster this namespace belongs to
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Labels applied to the namespace
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+          description: Annotations applied to the namespace
+        resource_quota:
+          type: object
+          properties:
+            cpu_limit:
+              type: string
+              description: CPU limit (e.g., "2000m")
+            memory_limit:
+              type: string
+              description: Memory limit (e.g., "4Gi")
+            storage_limit:
+              type: string
+              description: Storage limit (e.g., "10Gi")
+            pod_limit:
+              type: integer
+              description: Maximum number of pods
+          description: Resource quotas configured for the namespace
+      required:
+        - namespace_name
+        - cluster_name
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: integer
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+paths:
+  /namespaces:
+    get:
+      summary: List all Kubernetes namespaces
+      description: List all Kubernetes namespaces accessible to the authenticated user based on AD groups
+      parameters:
+        - name: cluster
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Target Kubernetes cluster name
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+          description: Limit the number of namespaces returned
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination
+        - name: label_selector
+          in: query
+          schema:
+            type: string
+          description: Filter namespaces by labels (e.g., environment=prod)
+      responses:
+        '200':
+          description: List of namespaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Namespace'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - ad_bearer_auth: []
+    post:
+      summary: Create a new Kubernetes namespace
+      description: Create a new Kubernetes namespace with appropriate RBAC bindings
+      parameters:
+        - name: cluster
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Target Kubernetes cluster name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNamespace'
+      responses:
+        '201':
+          description: Namespace created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Namespace'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Namespace already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - ad_bearer_auth: []
+  /namespaces/{namespace_name}:
+    get:
+      summary: Get a specific Kubernetes namespace
+      description: Get detailed information about a specific Kubernetes namespace
+      parameters:
+        - name: namespace_name
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          description: The name of the namespace
+        - name: cluster
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Target Kubernetes cluster name
+      responses:
+        '200':
+          description: Namespace details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Namespace'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Namespace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - ad_bearer_auth: []
+    put:
+      summary: Update a Kubernetes namespace
+      description: Update a Kubernetes namespace (labels, annotations, resource quotas)
+      parameters:
+        - name: namespace_name
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          description: The name of the namespace
+        - name: cluster
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Target Kubernetes cluster name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNamespace'
+      responses:
+        '200':
+          description: Namespace updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Namespace'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Namespace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - ad_bearer_auth: []
+    delete:
+      summary: Delete a Kubernetes namespace
+      description: Delete a Kubernetes namespace (requires elevated permissions)
+      parameters:
+        - name: namespace_name
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          description: The name of the namespace
+        - name: cluster
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Target Kubernetes cluster name
+      responses:
+        '204':
+          description: Namespace deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Namespace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - ad_bearer_auth: []
